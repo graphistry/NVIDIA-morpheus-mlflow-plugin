@@ -1,4 +1,4 @@
-# Copyright (c) 2021, NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2021-2022, NVIDIA CORPORATION.  All rights reserved.
 #
 # NVIDIA CORPORATION and its licensors retain all intellectual property
 # and proprietary rights in and to this software, related documentation
@@ -39,10 +39,29 @@ spec:
       imagePullSecrets:
       {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if .Values.mlflow.migrate }}
+      initContainers:
+        - name: db-migrate
+          image: "{{ .Values.mlflow.registry}}/{{ .Values.mlflow.image }}:{{ .Values.mlflow.version }}"
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          args:
+            - "/bin/bash"
+            - "-c"
+            - |
+              db_file=$( echo {{ .Values.mlflow.tracking_uri }} | sed 's|sqlite:///||' )
+              if [[ -f $db_file ]]; then
+                 /opt/conda/envs/mlflow/bin/mlflow db upgrade {{ .Values.mlflow.tracking_uri }}
+              fi
+          volumeMounts:
+          - mountPath: /mlflow/db
+            name: mlflow-db
+      {{- end }}
       containers:
       - name: {{ .Chart.Name }}
-        args: [ "/bin/sh", "-c", "mlflow server -h 0.0.0.0 --backend-store-uri sqlite:////tmp/mlflow-db.sqlite --default-artifact-root /mlflow/artifacts --static-prefix /morpheus/mlflow" ]
+        args: [ "/bin/sh", "-c", {{ .Values.mlflow.args }}  ]
         env:
+        - name: MLFLOW_TRACKING_URI
+          value: {{ .Values.mlflow.tracking_uri }}
         - name: TRITON_MODEL_REPO
           value: /common/triton-model-repo
         - name: TRITON_URL
@@ -57,6 +76,8 @@ spec:
         volumeMounts:
         - mountPath: /common/models
           name: model-path
+        - mountPath: /mlflow/db
+          name: mlflow-db
         - mountPath: /mlflow/artifacts
           name: mlflow-path
         - mountPath: /common/triton-model-repo
@@ -66,6 +87,10 @@ spec:
       - name: model-path
         hostPath:
           path: {{ .Values.hostCommonPath }}/models
+          type: DirectoryOrCreate
+      - name: mlflow-db
+        hostPath:
+          path: {{ .Values.hostCommonPath }}/mlflow/db
           type: DirectoryOrCreate
       - name: mlflow-path
         hostPath:

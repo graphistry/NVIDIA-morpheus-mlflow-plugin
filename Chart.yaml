@@ -1,9 +1,9 @@
 apiVersion: v2
-appVersion: "22.06"
+appVersion: "23.01"
 description: A Helm chart for deploying the MLflow server and deployment plugin.
 name: morpheus-mlflow
 type: application
-version: "22.06"
+version: "23.01"
 
 long_description: | 
 

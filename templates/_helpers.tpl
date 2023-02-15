@@ -1,4 +1,4 @@
-# Copyright (c) 2021, NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2021-2022, NVIDIA CORPORATION.  All rights reserved.
 #
 # NVIDIA CORPORATION and its licensors retain all intellectual property
 # and proprietary rights in and to this software, related documentation
@@ -75,4 +75,3 @@ Generate a dockerconfig json secret from the provided NGC API key
 {{- define "imagePullSecret" }}
 {{- printf "{\"auths\": {\"nvcr.io\": {\"auth\": \"%s\"}}}" (printf "%s:%s" .Values.ngc.username .Values.ngc.apiKey | b64enc) | b64enc }}
 {{- end }}
-

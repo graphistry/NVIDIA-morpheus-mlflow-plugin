@@ -4,7 +4,7 @@ NVIDIA Morpheus is an open AI application framework that provides cybersecurity 
 
 ### Setup
 
-The Morpheus MLflow container is packaged as a [Kubernetes](https://kubernetes.io/docs/home/) (aka k8s) deployment using a [Helm](https://helm.sh/docs/) chart. NVIDIA provides installation instructions for the [NVIDIA Cloud Native Core Stack](https://github.com/NVIDIA/cloud-native-core) which incorporates the setup of these platforms and tools.
+The Morpheus MLflow container is packaged as a [Kubernetes](https://kubernetes.io/docs/home/) (aka k8s) deployment using a [Helm](https://helm.sh/docs/) chart. NVIDIA provides installation instructions for the [NVIDIA Cloud Native Stack](https://github.com/NVIDIA/cloud-native-stack) which incorporates the setup of these platforms and tools.
 
 #### NGC API Key
 
@@ -15,11 +15,11 @@ Once you have created your API key, create an environment variable containing yo
 export API_KEY="<your key>"
 ```
 
-After installing the Cloud Native Core Stack, install and configure the NGC Registry CLI using the instructions from the [NGC Registry CLI User Guide](https://docs.nvidia.com/dgx/ngc-registry-cli-user-guide/index.html#topic_3).
+After installing the Cloud Native Stack, install and configure the NGC Registry CLI using the instructions from the [NGC Registry CLI User Guide](https://docs.nvidia.com/dgx/ngc-registry-cli-user-guide/index.html#topic_3).
 
 #### Create Namespace for Morpheus
 
-Create a namespace and an environment variable for the namespace to organize the k8s cluster deployed via EGX Stack and logically separate Morpheus-related deployments from other projects using the following command:
+Create a namespace and an environment variable for the namespace to organize the k8s cluster deployed via the Cloud Native Stack and logically separate Morpheus-related deployments from other projects using the following command:
 
 ```
 kubectl create namespace <some name>
@@ -31,7 +31,7 @@ export NAMESPACE="<some name>"
 Install the chart as follows:
 
 ```
-helm fetch https://helm.ngc.nvidia.com/nvidia/morpheus/charts/morpheus-mlflow-22.06.tgz --username='$oauthtoken' --password=$API_KEY --untar
+helm fetch https://helm.ngc.nvidia.com/nvidia/morpheus/charts/morpheus-mlflow-23.01.tgz --username='$oauthtoken' --password=$API_KEY --untar
 helm install --set ngc.apiKey="$API_KEY" \
  --namespace $NAMESPACE \
  mlflow1 \
@@ -56,13 +56,16 @@ ngc:
   team: ""
 ```
 
-The identity of the public catalog MLflow plugin image which could be overridden for other registry locations. The withEngine field makes the MLflow plugin deployment pending of the node where the AI Engine (Triton) pod is scheduled.
+The identity of the public catalog MLflow plugin image which could be overridden for other registry locations. The withEngine field makes the MLflow plugin deployment pending of the node where the AI Engine (Triton) pod is scheduled. Since this image can be used for MLflow serving and the Triton plugin, the arguments passed are configurable. Note that changes to the volume destinations in the server arguments will likely require changes in the deployment template. Also, the Triton plugin depends on setting the MLFLOW_TRACKING_URI environment variable so ensure that value agrees with the server setting noted. The `migrate` flag runs an idempotent database upgrade of the DB specified by the `tracking_uri` value. Set this to false if for some reason you want to backup the old DB, continue using a previous version of MLflow, or perform the migration manually.
 
 ```
 mlflow:
   registry: "nvcr.io/nvidia/morpheus"
   image: mlflow-triton-plugin
-  version: 1.24.0
+  version: 1.30.0
+  args: "mlflow server -h 0.0.0.0 --backend-store-uri sqlite:////mlflow/db/mlflow-db.sqlite --serve-artifacts --artifacts-destination /mlflow/artifacts --default-artifact-root /mlflow/artifacts"
+  tracking_uri: "sqlite:////mlflow/db/mlflow-db.sqlite"
+  migrate: true
   withEngine: false
 ```
 
@@ -125,7 +128,7 @@ helm install --set ngc.apiKey="$API_KEY" \
                morpheus-sdk-client
 ```
 
-Shell to the **sdk-cli-helper** and copy models to `/common`, which is mapped by default to `/opt/morpheus/common` on the host and where MLFlow will have access to model files.
+Shell to the **sdk-cli-helper** and copy models to `/common`, which is mapped by default to `/opt/morpheus/common` on the host and where MLflow will have access to model files.
 
 ```
 kubectl -n $NAMESPACE exec sdk-cli-helper -- cp -RL /workspace/models /common

@@ -13,7 +13,18 @@ ngc:
 mlflow:
   registry: "nvcr.io/nvidia/morpheus"
   image: mlflow-triton-plugin
-  version: 1.28.0
+  version: 1.30.0
+  # note that these mlflow volumes are dynamically created in the deployment
+  # so if you want different mount points in your args
+  # then you need to also review the hostPath mounts in the deployment
+  args: "mlflow server -h 0.0.0.0 -p 5000 --backend-store-uri sqlite:////mlflow/db/mlflow-db.sqlite --serve-artifacts --artifacts-destination /mlflow/artifacts --default-artifact-root /mlflow/artifacts --static-prefix /morpheus/mlflow"
+  # ensure this URI value agrees with the URI of your server launch command above
+  # it is also needed by the Triton plugin
+  tracking_uri: "sqlite:////mlflow/db/mlflow-db.sqlite"
+  # before running mlflow, run its db migration tool
+  # setting to false means you want to maintain
+  # an earlier db schema or do the migration manually
+  migrate: true
   # make the MLflow deployment Pending of
   # where the AI Engine is scheduled
   withEngine: false
@@ -23,7 +34,7 @@ hostCommonPath: /opt/morpheus/common
 
 # use 'Always' for development
 imagePullPolicy: IfNotPresent
- 
+
 imagePullSecrets:
 - name: nvidia-registrykey-secret
 # for Fleet Command deployments
